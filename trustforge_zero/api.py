@@ -1,9 +1,4 @@
-"""TRUSTFORGE ZERO live API and integrated Command Center.
-
-The API executes the deterministic defensive gauntlet and streams evidence as
-Server-Sent Events (SSE). It is intentionally synthetic and performs no real
-payments, external attacks, or production mutations.
-"""
+"""TRUSTFORGE ZERO live API and integrated Command Center."""
 
 from __future__ import annotations
 
@@ -25,7 +20,7 @@ from .security_engine import apply_least_privilege_patch, certify_after_retest, 
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
-app = FastAPI(title="TRUSTFORGE ZERO Live API", version="0.3.0", description="Evidence-first autonomous security certification for synthetic AI agent fleets.")
+app = FastAPI(title="TRUSTFORGE ZERO Live API", version="0.4.0", description="Evidence-first autonomous security certification for synthetic AI agent fleets.")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
@@ -57,6 +52,7 @@ async def _live_run(run_id: str, target: str, pace_ms: int) -> AsyncIterator[str
         return _sse("trustforge_event", {"run_id": run_id, **asdict(item)})
 
     yield await push("CERTIFICATION_STARTED", "governor", "discover", "RUNNING", "Governor opened an evidence-first certification run.", {"target": target, "sandbox": True})
+    yield await push("TRUST_BOUNDARY_MAPPED", "sentinel_agent", "discover", "BASELINED", "Sentinel mapped permissions, approval gates, source trust, and the synthetic target boundary.", {"target": target, "boundary": "synthetic_only", "high_risk_action_gate": "human_approval", "source_trust": "untrusted_document_content"})
 
     before = run_security_gauntlet(hardened=False)
     for result in before:
@@ -76,19 +72,23 @@ async def _live_run(run_id: str, target: str, pace_ms: int) -> AsyncIterator[str
         safe = decision in {"BLOCKED", "HUMAN_APPROVAL_REQUIRED"}
         yield await push("ATTACK_REPLAYED", "red_agent", "retest", "CONTROL_HELD" if safe else "CONTROL_FAILED", f"Hardened replay {result['test']} produced {decision}.", result)
 
+    chain_before_attestation = verify_chain(events)
+    yield await push("PROVENANCE_ATTESTED", "provenance_agent", "attest", "VERIFIED" if chain_before_attestation else "INVALID", "Provenance verified replay comparability and continuous evidence lineage." if chain_before_attestation else "Provenance rejected the evidence lineage.", {"chain_valid": chain_before_attestation, "events_attested": len(events), "replay_mode": "same_attack_after_patch"})
+
     certification = certify_after_retest()
     passport = certification["trust_passport"]
-    yield await push("JUDGE_VERDICT", "judge_agent", "certify", passport["status"], f"Judge verified {passport['tests_passed']}/{passport['tests_total']} required controls.", passport)
+    judge_status = passport["status"] if chain_before_attestation else "BLOCKED"
+    yield await push("JUDGE_VERDICT", "judge_agent", "certify", judge_status, f"Judge verified {passport['tests_passed']}/{passport['tests_total']} required controls with provenance attestation.", passport)
 
     chain_before_final = verify_chain(events)
-    final_status = "CERTIFIED" if passport["status"] == "CERTIFIED" and chain_before_final else "BLOCKED"
-    final = _event(events, "TRUST_PASSPORT_ISSUED" if final_status == "CERTIFIED" else "CERTIFICATION_BLOCKED", "governor", "passport", final_status, "Trust Passport issued from replayed evidence and verified audit integrity." if final_status == "CERTIFIED" else "Certification blocked by evidence or audit-integrity failure.", {"trust_score": passport["trust_score"] if final_status == "CERTIFIED" else 0, "tests_passed": passport["tests_passed"], "tests_total": passport["tests_total"], "audit_chain_valid_before_passport": chain_before_final})
+    final_status = "CERTIFIED" if passport["status"] == "CERTIFIED" and chain_before_final and chain_before_attestation else "BLOCKED"
+    final = _event(events, "TRUST_PASSPORT_ISSUED" if final_status == "CERTIFIED" else "CERTIFICATION_BLOCKED", "governor", "passport", final_status, "Trust Passport issued from replayed evidence and verified provenance." if final_status == "CERTIFIED" else "Certification blocked by evidence, provenance, or audit-integrity failure.", {"trust_score": passport["trust_score"] if final_status == "CERTIFIED" else 0, "tests_passed": passport["tests_passed"], "tests_total": passport["tests_total"], "audit_chain_valid_before_passport": chain_before_final, "provenance_attested": chain_before_attestation})
     if delay:
         await asyncio.sleep(delay)
     yield _sse("trustforge_event", {"run_id": run_id, **asdict(final)})
 
     chain_valid = verify_chain(events)
-    yield _sse("trustforge_complete", {"run_id": run_id, "certificate": final_status if chain_valid else "BLOCKED", "trust_score": passport["trust_score"] if final_status == "CERTIFIED" and chain_valid else 0, "event_count": len(events), "audit_chain_valid": chain_valid, "terminal_event_hash": events[-1].event_hash, "target": target, "sandbox": True})
+    yield _sse("trustforge_complete", {"run_id": run_id, "certificate": final_status if chain_valid else "BLOCKED", "trust_score": passport["trust_score"] if final_status == "CERTIFIED" and chain_valid else 0, "event_count": len(events), "audit_chain_valid": chain_valid, "provenance_attested": chain_before_attestation, "terminal_event_hash": events[-1].event_hash, "target": target, "sandbox": True})
 
 
 @app.get("/", include_in_schema=False)
@@ -103,12 +103,12 @@ def api_root() -> dict:
 
 @app.get("/healthz")
 def health() -> dict:
-    return {"status": "ok", "system": "TRUSTFORGE ZERO"}
+    return {"status": "ok", "system": "TRUSTFORGE ZERO", "mesh": "7-agent"}
 
 
 @app.get("/api/v1/agents")
 def agents() -> dict:
-    return {"governor": "trustforge_governor", "specialists": ["red_agent", "forensic_agent", "defense_agent", "judge_agent"], "certification_invariant": "No security claim without test evidence; no patch claim without retest; no high-risk real-world action without human approval."}
+    return {"governor": "trustforge_governor", "specialists": ["sentinel_agent", "red_agent", "forensic_agent", "defense_agent", "provenance_agent", "judge_agent"], "certification_invariant": "No security claim without test evidence; no patch claim without retest; no high-risk real-world action without human approval."}
 
 
 @app.get("/api/v1/gauntlet/stream")
