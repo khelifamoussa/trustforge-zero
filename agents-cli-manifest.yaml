@@ -1,0 +1,5 @@
+name: trustforge-zero
+agent_directory: trustforge_zero
+create_params:
+  deployment_target: none
+  session_type: in_memory
