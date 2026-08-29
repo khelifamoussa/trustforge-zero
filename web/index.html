@@ -1,133 +1,30 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TRUSTFORGE ZERO — Autonomous Agent Security Command Center</title>
-  <meta name="description" content="Evidence-first autonomous security, repair, retest and certification for AI agent fleets." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/styles.css" />
-</head>
-<body>
-  <div class="noise"></div>
-  <div class="grid-glow"></div>
-  <main class="app-shell">
-    <header class="mission-bar panel">
-      <div class="brand-wrap">
-        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
-        <div>
-          <div class="eyebrow">AUTONOMOUS AGENT SECURITY</div>
-          <h1>TRUSTFORGE <strong>ZERO</strong></h1>
-          <p>Evidence-first autonomous certification</p>
-        </div>
-      </div>
-      <div class="mission-actions">
-        <div class="status-stack">
-          <span class="chip live" id="modeChip">LIVE</span>
-          <span class="health"><i id="healthDot"></i><span id="healthText">Backend online</span></span>
-        </div>
-        <div class="run-id-box"><span>RUN ID</span><code id="runId">—</code></div>
-        <button class="btn ghost" id="resetBtn">Reset</button>
-        <button class="btn primary" id="runBtn"><span class="pulse-dot"></span>RUN LIVE GAUNTLET</button>
-      </div>
-    </header>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TRUSTFORGE ZERO // Neural Security OS</title><meta name="description" content="Autonomous immune system for AI agent fleets"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="/static/styles.css"></head><body>
+<div class="aurora a1"></div><div class="aurora a2"></div><div class="mesh-bg"></div><div class="scanline"></div>
+<main class="shell">
+<header class="topbar glass"><div class="brand"><div class="sigil"><i></i><i></i><i></i></div><div><span class="micro">NEURAL SECURITY OS / 01</span><h1>TRUSTFORGE <b>ZERO</b></h1></div></div><div class="top-center"><div class="live-pill"><i id="healthDot"></i><span id="healthText">LINKING</span></div><div class="runbox"><span>ACTIVE RUN</span><code id="runId">STANDBY</code></div></div><div class="actions"><button class="icon-btn" id="resetBtn" title="Reset">↺</button><button class="launch" id="runBtn"><span class="launch-orb"></span><span>INITIATE GAUNTLET</span><small>LIVE EVIDENCE RUN</small></button></div></header>
 
-    <section class="hero-grid">
-      <section class="panel fleet-panel">
-        <div class="panel-head"><div><span class="eyebrow">AGENT FLEET</span><h2>Autonomous Security Mesh</h2></div><span class="tiny-badge">Google ADK</span></div>
-        <div class="fleet-stage" id="fleetStage">
-          <svg class="fleet-lines" viewBox="0 0 800 480" preserveAspectRatio="none" aria-hidden="true">
-            <path id="edge-red" d="M400 240 L160 110"/>
-            <path id="edge-forensic" d="M400 240 L640 110"/>
-            <path id="edge-defense" d="M400 240 L160 370"/>
-            <path id="edge-judge" d="M400 240 L640 370"/>
-          </svg>
-          <div class="agent-node governor" data-agent="governor"><span class="node-orbit"></span><div class="node-icon">G</div><strong>Governor</strong><small>trustforge_governor</small></div>
-          <div class="agent-node red" data-agent="red_agent"><div class="node-icon">R</div><strong>Red Agent</strong><small>Adversarial testing</small></div>
-          <div class="agent-node forensic" data-agent="forensic_agent"><div class="node-icon">F</div><strong>Forensic</strong><small>Root-cause analysis</small></div>
-          <div class="agent-node defense" data-agent="defense_agent"><div class="node-icon">D</div><strong>Defense</strong><small>Least privilege repair</small></div>
-          <div class="agent-node judge" data-agent="judge_agent"><div class="node-icon">J</div><strong>Judge</strong><small>Evidence certification</small></div>
-          <div class="security-core" id="securityCore">
-            <div class="core-rings"><span></span><span></span><span></span></div>
-            <div class="core-shield">⬡</div>
-            <div class="core-state" id="coreState">UNTESTED</div>
-            <div class="core-target">synthetic_procurement_agent</div>
-            <div class="sandbox-badge">SYNTHETIC SANDBOX</div>
-          </div>
-        </div>
-      </section>
+<section class="hero">
+<div class="stage glass">
+<div class="stage-head"><div><span class="micro">AUTONOMOUS IMMUNE MESH</span><h2>Agent Fleet Theater</h2></div><div class="mesh-stats"><span><b id="fleetCount">7</b> AGENTS</span><span><b>4</b> ATTACK VECTORS</span><span class="adk">GOOGLE ADK</span></div></div>
+<div class="phase-rail"><div data-phase="discover"><i>01</i><span>DISCOVER</span></div><div data-phase="attack"><i>02</i><span>ATTACK</span></div><div data-phase="diagnose"><i>03</i><span>DIAGNOSE</span></div><div data-phase="repair"><i>04</i><span>REPAIR</span></div><div data-phase="retest"><i>05</i><span>RE-ATTACK</span></div><div data-phase="attest"><i>06</i><span>ATTEST</span></div><div data-phase="certify"><i>07</i><span>CERTIFY</span></div></div>
+<div class="theater" id="fleetStage"><svg class="links" viewBox="0 0 1000 570" preserveAspectRatio="none"><path id="edge-sentinel" d="M500 285 L500 65"/><path id="edge-red" d="M500 285 L150 145"/><path id="edge-forensic" d="M500 285 L850 145"/><path id="edge-defense" d="M500 285 L150 440"/><path id="edge-provenance" d="M500 285 L500 510"/><path id="edge-judge" d="M500 285 L850 440"/></svg>
+<div class="target-halo"><span></span><span></span><span></span><span></span></div><div class="core" id="securityCore"><div class="core-energy"></div><div class="core-glyph">◇</div><span class="micro">TARGET STATE</span><strong id="coreState">DORMANT</strong><small>synthetic_procurement_agent</small></div>
+<div class="node sentinel" data-agent="sentinel_agent"><div class="node-icon">S</div><div><span>Sentinel</span><small>Trust boundary</small></div><em>01</em></div>
+<div class="node red" data-agent="red_agent"><div class="node-icon">R</div><div><span>Red Swarm</span><small>Adversarial pressure</small></div><em>02</em></div>
+<div class="node forensic" data-agent="forensic_agent"><div class="node-icon">F</div><div><span>Forensic</span><small>Causal intelligence</small></div><em>03</em></div>
+<div class="node defense" data-agent="defense_agent"><div class="node-icon">D</div><div><span>Defense</span><small>Autonomous repair</small></div><em>04</em></div>
+<div class="node provenance" data-agent="provenance_agent"><div class="node-icon">P</div><div><span>Provenance</span><small>Evidence lineage</small></div><em>06</em></div>
+<div class="node judge" data-agent="judge_agent"><div class="node-icon">J</div><div><span>Judge</span><small>Final authority</small></div><em>07</em></div>
+<div class="governor-tag" data-agent="governor"><span>GOVERNOR</span><b>ORCHESTRATING</b></div><div class="sandbox">ISOLATED SYNTHETIC SANDBOX</div></div></div>
 
-      <aside class="panel score-panel">
-        <div class="panel-head"><div><span class="eyebrow">TRUST SCORE</span><h2>Certification Reactor</h2></div></div>
-        <div class="score-reactor locked" id="scoreReactor">
-          <svg viewBox="0 0 220 220" aria-hidden="true">
-            <circle class="score-track" cx="110" cy="110" r="86"/>
-            <circle class="score-progress" id="scoreProgress" cx="110" cy="110" r="86"/>
-          </svg>
-          <div class="score-number"><span id="scoreValue">—</span><small>/100</small></div>
-          <div class="score-lock" id="scoreLock">LOCKED UNTIL FINAL EVIDENCE</div>
-        </div>
-        <div class="score-metrics">
-          <div><span>Controls</span><strong id="controlsMetric">0/4</strong></div>
-          <div><span>Audit chain</span><strong id="chainMetric">PENDING</strong></div>
-          <div><span>Verdict</span><strong id="verdictMetric">PENDING</strong></div>
-        </div>
-        <div class="invariant-card"><span class="eyebrow">CERTIFICATION INVARIANT</span><p id="invariant">No security claim without test evidence; no patch claim without retest; no high-risk real-world action without human approval.</p></div>
-      </aside>
-    </section>
+<aside class="right-stack"><div class="score-card glass"><div class="card-label"><span class="micro">LIVE TRUST INDEX</span><span id="verdictMetric" class="verdict">PENDING</span></div><div class="score-wrap"><svg viewBox="0 0 240 240"><defs><linearGradient id="scoreGrad"><stop offset="0" stop-color="#65f7ff"/><stop offset="1" stop-color="#a86cff"/></linearGradient></defs><circle class="track" cx="120" cy="120" r="94"/><circle class="progress" id="scoreProgress" cx="120" cy="120" r="94"/></svg><div class="score-value"><span id="scoreValue">--</span><small>TRUST / 100</small></div></div><div class="triple"><div><span>CONTROLS</span><b id="controlsMetric">0/4</b></div><div><span>CHAIN</span><b id="chainMetric">WAIT</b></div><div><span>PROVENANCE</span><b id="provenanceMetric">WAIT</b></div></div></div>
+<div class="intel-card glass"><div class="card-label"><span class="micro">LIVE INTELLIGENCE</span><span class="blink">● STREAM</span></div><div class="intel-main"><span id="intelPhase">STANDBY</span><h3 id="intelTitle">Awaiting mission</h3><p id="intelText">Initiate the gauntlet to watch the agent mesh attack, diagnose, repair and certify in real time.</p></div><div class="intel-hash"><span>EVENT HASH</span><code id="intelHash">—</code></div></div></aside></section>
 
-    <section class="data-grid">
-      <section class="panel attack-panel">
-        <div class="panel-head"><div><span class="eyebrow">ATTACK MATRIX</span><h2>Baseline → Hardened Replay</h2></div><span class="tiny-badge">4 Controls</span></div>
-        <div class="attack-table" id="attackTable">
-          <div class="attack-row header"><span>Scenario</span><span>Baseline</span><span>Hardened</span><span>Control</span></div>
-          <div class="attack-row" data-test="indirect_prompt_injection"><span>Indirect prompt injection</span><span class="baseline">—</span><span class="hardened">—</span><span class="control">PENDING</span></div>
-          <div class="attack-row" data-test="hallucination_conflict"><span>Hallucination conflict</span><span class="baseline">—</span><span class="hardened">—</span><span class="control">PENDING</span></div>
-          <div class="attack-row" data-test="no_progress_loop"><span>No-progress loop</span><span class="baseline">—</span><span class="hardened">—</span><span class="control">PENDING</span></div>
-          <div class="attack-row" data-test="high_risk_human_approval"><span>High-risk human approval</span><span class="baseline">—</span><span class="hardened">—</span><span class="control">PENDING</span></div>
-        </div>
-      </section>
+<section class="lower-grid"><div class="matrix glass"><div class="section-title"><div><span class="micro">ADVERSARIAL LAB</span><h2>Attack / Repair Matrix</h2></div><span class="counter">4 LIVE CONTROLS</span></div><div class="matrix-head"><span>THREAT VECTOR</span><span>BEFORE</span><span>AFTER</span><span>PROOF</span></div><div id="attackTable"><div class="mrow" data-test="indirect_prompt_injection"><span><i>01</i>Indirect Prompt Injection</span><b class="baseline">—</b><b class="hardened">—</b><em class="control">WAIT</em></div><div class="mrow" data-test="hallucination_conflict"><span><i>02</i>Hallucination Conflict</span><b class="baseline">—</b><b class="hardened">—</b><em class="control">WAIT</em></div><div class="mrow" data-test="no_progress_loop"><span><i>03</i>No-Progress Loop</span><b class="baseline">—</b><b class="hardened">—</b><em class="control">WAIT</em></div><div class="mrow" data-test="high_risk_human_approval"><span><i>04</i>High-Risk Action</span><b class="baseline">—</b><b class="hardened">—</b><em class="control">WAIT</em></div></div></div>
+<div class="patch glass" id="diffPanel"><div class="section-title"><div><span class="micro">AUTONOMOUS REMEDIATION</span><h2>Policy Mutation</h2></div><span class="patch-state">ARMED</span></div><div class="patch-flow"><div><span>DOCUMENT TRUST</span><code id="diffDoc">trusted</code><i>→</i><code class="after">?</code></div><div><span>RECIPIENT OVERRIDE</span><code id="diffRecipient">allowed</code><i>→</i><code class="after">?</code></div><div><span>SOURCE GROUNDING</span><code id="diffGrounding">false</code><i>→</i><code class="after">?</code></div><div><span>LOOP BUDGET</span><code id="diffLoop">8</code><i>→</i><code class="after">?</code></div></div></div></section>
 
-      <section class="panel diff-panel" id="diffPanel">
-        <div class="panel-head"><div><span class="eyebrow">POLICY REPAIR DIFF</span><h2>Least-Privilege Patch</h2></div><span class="tiny-badge amber">WAITING</span></div>
-        <div class="diff-list">
-          <div><span>Document instructions</span><code id="diffDoc">trusted → ?</code></div>
-          <div><span>Recipient override</span><code id="diffRecipient">allowed → ?</code></div>
-          <div><span>Source grounding</span><code id="diffGrounding">false → ?</code></div>
-          <div><span>No-progress budget</span><code id="diffLoop">8 → ?</code></div>
-          <div><span>Human approval threshold</span><code id="diffHuman">$10,000 retained</code></div>
-        </div>
-      </section>
-    </section>
+<section class="evidence glass"><div class="section-title"><div><span class="micro">IMMUTABLE TELEMETRY</span><h2>Evidence Stream</h2></div><div class="evidence-tools"><span id="eventCount">0 EVENTS</span><button id="pauseBtn">PAUSE</button></div></div><div class="event-stream" id="timeline"><div class="empty"><span>◌</span>NO EVIDENCE CAPTURED</div></div></section>
 
-    <section class="panel timeline-panel">
-      <div class="panel-head"><div><span class="eyebrow">LIVE EVIDENCE</span><h2>Hash-Chained Event Rail</h2></div><div class="timeline-actions"><span id="eventCount">0 EVENTS</span><button class="btn ghost small" id="pauseBtn">Pause scroll</button></div></div>
-      <div class="timeline" id="timeline"><div class="timeline-empty">Run the live gauntlet to stream evidence here.</div></div>
-    </section>
-
-    <section class="passport-wrap" id="passportWrap" hidden>
-      <div class="passport-card">
-        <div class="passport-glow"></div>
-        <div class="passport-head"><div><span class="eyebrow">TRUST PASSPORT</span><h2 id="passportStatus">CERTIFIED</h2></div><div class="passport-seal">✓</div></div>
-        <div class="passport-grid">
-          <div><span>Trust score</span><strong id="passportScore">100/100</strong></div>
-          <div><span>Controls verified</span><strong id="passportControls">4/4</strong></div>
-          <div><span>Backend audit chain</span><strong id="passportBackendChain">VERIFIED</strong></div>
-          <div><span>UI chain continuity</span><strong id="passportUiChain">VERIFIED</strong></div>
-        </div>
-        <div class="passport-meta"><span>Run ID</span><code id="passportRun">—</code><span>Terminal evidence hash</span><code id="passportHash">—</code></div>
-        <div class="passport-footer"><span>SYNTHETIC SANDBOX</span><button class="btn ghost small" id="copyHashBtn">Copy evidence hash</button></div>
-      </div>
-    </section>
-
-    <footer class="audit-strip panel">
-      <div><span class="audit-led" id="uiChainLed"></span><strong>UI chain continuity</strong><span id="uiChainText">Waiting</span></div>
-      <div><span class="audit-led" id="backendChainLed"></span><strong>Backend audit chain</strong><span id="backendChainText">Waiting</span></div>
-      <div class="hash-tail"><span>TERMINAL HASH</span><code id="terminalHash">—</code></div>
-    </footer>
-  </main>
-  <script src="/static/app.js" defer></script>
-</body>
-</html>
+<section class="passport" id="passportWrap" hidden><div class="passport-light"></div><div class="passport-left"><span class="micro">TRUSTFORGE ZERO / DIGITAL ATTESTATION</span><h2 id="passportStatus">CERTIFIED</h2><p>Autonomous Trust Passport</p></div><div class="passport-score"><span id="passportScore">100</span><small>/100</small></div><div class="passport-facts"><div><span>CONTROL SET</span><b id="passportControls">4/4 VERIFIED</b></div><div><span>AUDIT CHAIN</span><b id="passportBackendChain">VERIFIED</b></div><div><span>PROVENANCE</span><b id="passportProvenance">ATTESTED</b></div><div><span>UI CONTINUITY</span><b id="passportUiChain">VERIFIED</b></div></div><div class="passport-proof"><span>RUN</span><code id="passportRun">—</code><span>TERMINAL PROOF</span><code id="passportHash">—</code><button id="copyHashBtn">COPY PROOF</button></div></section>
+<footer class="footer glass"><div><i id="uiChainLed"></i><span>UI CHAIN</span><b id="uiChainText">WAITING</b></div><div><i id="backendChainLed"></i><span>BACKEND CHAIN</span><b id="backendChainText">WAITING</b></div><div class="terminal"><span>TERMINAL HASH</span><code id="terminalHash">—</code></div><p id="invariant">No security claim without test evidence; no patch claim without retest; no high-risk real-world action without human approval.</p></footer>
+</main><script src="/static/app.js" defer></script></body></html>
