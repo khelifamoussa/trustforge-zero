@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TRUSTFORGE ZERO — Autonomous Agent Security Command Center</title>
+  <meta name="description" content="Evidence-first autonomous security, repair, retest and certification for AI agent fleets." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="noise"></div>
+  <div class="grid-glow"></div>
+  <main class="app-shell">
+    <header class="mission-bar panel">
+      <div class="brand-wrap">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div>
+          <div class="eyebrow">AUTONOMOUS AGENT SECURITY</div>
+          <h1>TRUSTFORGE <strong>ZERO</strong></h1>
+          <p>Evidence-first autonomous certification</p>
+        </div>
+      </div>
+      <div class="mission-actions">
+        <div class="status-stack">
+          <span class="chip live" id="modeChip">LIVE</span>
+          <span class="health"><i id="healthDot"></i><span id="healthText">Backend online</span></span>
+        </div>
+        <div class="run-id-box"><span>RUN ID</span><code id="runId">—</code></div>
+        <button class="btn ghost" id="resetBtn">Reset</button>
+        <button class="btn primary" id="runBtn"><span class="pulse-dot"></span>RUN LIVE GAUNTLET</button>
+      </div>
+    </header>
+
+    <section class="hero-grid">
+      <section class="panel fleet-panel">
+        <div class="panel-head"><div><span class="eyebrow">AGENT FLEET</span><h2>Autonomous Security Mesh</h2></div><span class="tiny-badge">Google ADK</span></div>
+        <div class="fleet-stage" id="fleetStage">
+          <svg class="fleet-lines" viewBox="0 0 800 480" preserveAspectRatio="none" aria-hidden="true">
+            <path id="edge-red" d="M400 240 L160 110"/>
+            <path id="edge-forensic" d="M400 240 L640 110"/>
+            <path id="edge-defense" d="M400 240 L160 370"/>
+            <path id="edge-judge" d="M400 240 L640 370"/>
+          </svg>
+          <div class="agent-node governor" data-agent="governor"><span class="node-orbit"></span><div class="node-icon">G</div><strong>Governor</strong><small>trustforge_governor</small></div>
+          <div class="agent-node red" data-agent="red_agent"><div class="node-icon">R</div><strong>Red Agent</strong><small>Adversarial testing</small></div>
+          <div class="agent-node forensic" data-agent="forensic_agent"><div class="node-icon">F</div><strong>Forensic</strong><small>Root-cause analysis</small></div>
+          <div class="agent-node defense" data-agent="defense_agent"><div class="node-icon">D</div><strong>Defense</strong><small>Least privilege repair</small></div>
+          <div class="agent-node judge" data-agent="judge_agent"><div class="node-icon">J</div><strong>Judge</strong><small>Evidence certification</small></div>
+          <div class="security-core" id="securityCore">
+            <div class="core-rings"><span></span><span></span><span></span></div>
+            <div class="core-shield">⬡</div>
+            <div class="core-state" id="coreState">UNTESTED</div>
+            <div class="core-target">synthetic_procurement_agent</div>
+            <div class="sandbox-badge">SYNTHETIC SANDBOX</div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel score-panel">
+        <div class="panel-head"><div><span class="eyebrow">TRUST SCORE</span><h2>Certification Reactor</h2></div></div>
+        <div class="score-reactor locked" id="scoreReactor">
+          <svg viewBox="0 0 220 220" aria-hidden="true">
+            <circle class="score-track" cx="110" cy="110" r="86"/>
+            <circle class="score-progress" id="scoreProgress" cx="110" cy="110" r="86"/>
+          </svg>
+          <div class="score-number"><span id="scoreValue">—</span><small>/100</small></div>
+          <div class="score-lock" id="scoreLock">LOCKED UNTIL FINAL EVIDENCE</div>
+        </div>
+        <div class="score-metrics">
+          <div><span>Controls</span><strong id="controlsMetric">0/4</strong></div>
+          <div><span>Audit chain</span><strong id="chainMetric">PENDING</strong></div>
+          <div><span>Verdict</span><strong id="verdictMetric">PENDING</strong></div>
+        </div>
+        <div class="invariant-card"><span class="eyebrow">CERTIFICATION INVARIANT</span><p id="invariant">No security claim without test evidence; no patch claim without retest; no high-risk real-world action without human approval.</p></div>
+      </aside>
+    </section>
+
+    <section class="data-grid">
+      <section class="panel attack-panel">
+        <div class="panel-head"><div><span class="eyebrow">ATTACK MATRIX</span><h2>Baseline → Hardened Replay</h2></div><span class="tiny-badge">4 Controls</span></div>
+        <div class="attack-table" id="attackTable">
+          <div class="attack-row header"><span>Scenario</span><span>Baseline</span><span>Hardened</span><span>Control</span></div>
+          <div class="attack-row" data-test="indirect_prompt_injection"><span>Indirect prompt injection</span><span class="baseline">—</span><span class="hardened">—</span><span class="control">PENDING</span></div>
+          <div class="attack-row" data-test="hallucination_conflict"><span>Hallucination conflict</span><span class="baseline">—</span><span class="hardened">—</span><span class="control">PENDING</span></div>
+          <div class="attack-row" data-test="no_progress_loop"><span>No-progress loop</span><span class="baseline">—</span><span class="hardened">—</span><span class="control">PENDING</span></div>
+          <div class="attack-row" data-test="high_risk_human_approval"><span>High-risk human approval</span><span class="baseline">—</span><span class="hardened">—</span><span class="control">PENDING</span></div>
+        </div>
+      </section>
+
+      <section class="panel diff-panel" id="diffPanel">
+        <div class="panel-head"><div><span class="eyebrow">POLICY REPAIR DIFF</span><h2>Least-Privilege Patch</h2></div><span class="tiny-badge amber">WAITING</span></div>
+        <div class="diff-list">
+          <div><span>Document instructions</span><code id="diffDoc">trusted → ?</code></div>
+          <div><span>Recipient override</span><code id="diffRecipient">allowed → ?</code></div>
+          <div><span>Source grounding</span><code id="diffGrounding">false → ?</code></div>
+          <div><span>No-progress budget</span><code id="diffLoop">8 → ?</code></div>
+          <div><span>Human approval threshold</span><code id="diffHuman">$10,000 retained</code></div>
+        </div>
+      </section>
+    </section>
+
+    <section class="panel timeline-panel">
+      <div class="panel-head"><div><span class="eyebrow">LIVE EVIDENCE</span><h2>Hash-Chained Event Rail</h2></div><div class="timeline-actions"><span id="eventCount">0 EVENTS</span><button class="btn ghost small" id="pauseBtn">Pause scroll</button></div></div>
+      <div class="timeline" id="timeline"><div class="timeline-empty">Run the live gauntlet to stream evidence here.</div></div>
+    </section>
+
+    <section class="passport-wrap" id="passportWrap" hidden>
+      <div class="passport-card">
+        <div class="passport-glow"></div>
+        <div class="passport-head"><div><span class="eyebrow">TRUST PASSPORT</span><h2 id="passportStatus">CERTIFIED</h2></div><div class="passport-seal">✓</div></div>
+        <div class="passport-grid">
+          <div><span>Trust score</span><strong id="passportScore">100/100</strong></div>
+          <div><span>Controls verified</span><strong id="passportControls">4/4</strong></div>
+          <div><span>Backend audit chain</span><strong id="passportBackendChain">VERIFIED</strong></div>
+          <div><span>UI chain continuity</span><strong id="passportUiChain">VERIFIED</strong></div>
+        </div>
+        <div class="passport-meta"><span>Run ID</span><code id="passportRun">—</code><span>Terminal evidence hash</span><code id="passportHash">—</code></div>
+        <div class="passport-footer"><span>SYNTHETIC SANDBOX</span><button class="btn ghost small" id="copyHashBtn">Copy evidence hash</button></div>
+      </div>
+    </section>
+
+    <footer class="audit-strip panel">
+      <div><span class="audit-led" id="uiChainLed"></span><strong>UI chain continuity</strong><span id="uiChainText">Waiting</span></div>
+      <div><span class="audit-led" id="backendChainLed"></span><strong>Backend audit chain</strong><span id="backendChainText">Waiting</span></div>
+      <div class="hash-tail"><span>TERMINAL HASH</span><code id="terminalHash">—</code></div>
+    </footer>
+  </main>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
