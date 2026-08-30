@@ -16,19 +16,21 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from .evidence_store import persist_run, persistence_status
 from .events import TrustforgeEvent, build_event, verify_chain
 from .parallel_adk import run_fast_live_specialist_mesh
 from .resilience import certification_recovery_gate, run_recovery_drill
 from .security_engine import apply_least_privilege_patch, certify_after_retest, run_security_gauntlet
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
+PERSISTENCE_TIMEOUT_SECONDS = float(os.getenv("TRUSTFORGE_PERSISTENCE_TIMEOUT_SECONDS", "2.5"))
 
 app = FastAPI(
     title="TRUSTFORGE ZERO Live API",
-    version="0.8.0",
+    version="0.9.0",
     description=(
         "One-click evidence-first autonomous immune mesh with bounded live Google ADK + Gemini reasoning, "
-        "provider resilience, deterministic security controls, and fail-closed runtime recovery."
+        "provider resilience, deterministic security controls, fail-closed runtime recovery, and persistent evidence."
     ),
 )
 app.add_middleware(
@@ -90,6 +92,31 @@ def _cloud_runtime() -> dict:
     }
 
 
+async def _persist_completed_run(run_id: str, events: list[TrustforgeEvent], payload: dict) -> dict:
+    """Persist without allowing Firestore latency/outage to freeze the live UI."""
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(persist_run, run_id, events, payload),
+            timeout=PERSISTENCE_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        return {
+            "backend": "firestore",
+            "persisted": False,
+            "run_id": run_id,
+            "events_persisted": 0,
+            "error": f"PERSISTENCE_TIMEOUT after {PERSISTENCE_TIMEOUT_SECONDS:.1f}s",
+        }
+    except Exception as exc:
+        return {
+            "backend": "firestore",
+            "persisted": False,
+            "run_id": run_id,
+            "events_persisted": 0,
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+
 async def _live_run(
     run_id: str,
     target: str,
@@ -128,9 +155,6 @@ async def _live_run(
         },
     )
 
-    # Competition path: one bounded live Gemini/ADK reasoning call plus real
-    # deterministic specialist execution. Provider quota/outage never freezes
-    # the run; it becomes explicit evidence and closes the certification gate.
     live_adk_verified = False
     adk_evidence: dict = {}
     if require_live_adk:
@@ -355,30 +379,29 @@ async def _live_run(
     yield _sse("trustforge_event", {"run_id": run_id, **asdict(final)})
 
     chain_valid = verify_chain(events)
-    yield _sse(
-        "trustforge_complete",
-        {
-            "run_id": run_id,
-            "certificate": final_status if chain_valid else "BLOCKED",
-            "trust_score": passport["trust_score"] if final_status == "CERTIFIED" and chain_valid else 0,
-            "event_count": len(events),
-            "audit_chain_valid": chain_valid,
-            "provenance_attested": chain_before_attestation,
-            "runtime_recovery_verified": recovery_gate_open,
-            "live_adk_verified": live_adk_verified,
-            "adk_model": adk_evidence.get("model"),
-            "adk_latency_ms": adk_evidence.get("total_latency_ms"),
-            "adk_live_agents": adk_evidence.get("live_model_agents", []),
-            "adk_error": adk_evidence.get("error"),
-            "terminal_event_hash": events[-1].event_hash,
-            "target": target,
-            "sandbox": True,
-            "tests_passed": passport["tests_passed"],
-            "tests_total": passport["tests_total"],
-            "coverage": passport.get("coverage", {}),
-            "cloud_runtime": _cloud_runtime(),
-        },
-    )
+    complete_payload = {
+        "run_id": run_id,
+        "certificate": final_status if chain_valid else "BLOCKED",
+        "trust_score": passport["trust_score"] if final_status == "CERTIFIED" and chain_valid else 0,
+        "event_count": len(events),
+        "audit_chain_valid": chain_valid,
+        "provenance_attested": chain_before_attestation,
+        "runtime_recovery_verified": recovery_gate_open,
+        "live_adk_verified": live_adk_verified,
+        "adk_model": adk_evidence.get("model"),
+        "adk_latency_ms": adk_evidence.get("total_latency_ms"),
+        "adk_live_agents": adk_evidence.get("live_model_agents", []),
+        "adk_error": adk_evidence.get("error"),
+        "terminal_event_hash": events[-1].event_hash,
+        "target": target,
+        "sandbox": True,
+        "tests_passed": passport["tests_passed"],
+        "tests_total": passport["tests_total"],
+        "coverage": passport.get("coverage", {}),
+        "cloud_runtime": _cloud_runtime(),
+    }
+    complete_payload["persistence"] = await _persist_completed_run(run_id, events, complete_payload)
+    yield _sse("trustforge_complete", complete_payload)
 
 
 @app.get("/", include_in_schema=False)
@@ -396,8 +419,10 @@ def api_root() -> dict:
         "vectors": 10,
         "runtime_recovery": "fail-closed",
         "live_adk": "bounded-required-for-certification",
+        "persistent_evidence": "firestore-bounded-fail-safe",
         "cloud_runtime": _cloud_runtime(),
         "stream": "/api/v1/gauntlet/stream",
+        "persistence": "/api/v1/persistence/status",
         "health": "/healthz",
         "command_center": "/",
     }
@@ -413,8 +438,21 @@ def health() -> dict:
         "runtime_recovery": "enabled",
         "live_adk_configured": bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")),
         "live_model_timeout_seconds": float(os.getenv("TRUSTFORGE_LIVE_TIMEOUT_SECONDS", "8")),
+        "persistence_timeout_seconds": PERSISTENCE_TIMEOUT_SECONDS,
         "cloud_runtime": _cloud_runtime(),
     }
+
+
+@app.get("/api/v1/persistence/status")
+async def persistence() -> dict:
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(persistence_status), timeout=PERSISTENCE_TIMEOUT_SECONDS)
+    except asyncio.TimeoutError:
+        return {
+            "backend": "firestore",
+            "ready": False,
+            "error": f"PERSISTENCE_TIMEOUT after {PERSISTENCE_TIMEOUT_SECONDS:.1f}s",
+        }
 
 
 @app.get("/api/v1/agents")
@@ -446,6 +484,11 @@ def agents() -> dict:
             "configured": bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")),
             "critical_path_model_calls": 1,
             "hard_timeout_seconds": float(os.getenv("TRUSTFORGE_LIVE_TIMEOUT_SECONDS", "8")),
+        },
+        "persistent_evidence": {
+            "backend": "firestore",
+            "write_timeout_seconds": PERSISTENCE_TIMEOUT_SECONDS,
+            "failure_is_non_fatal_to_security_execution": True,
         },
         "cloud_runtime": _cloud_runtime(),
         "certification_invariant": (
