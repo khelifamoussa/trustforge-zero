@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .events import TrustforgeEvent, build_event, verify_chain
-from .live_adk import run_live_governor_probe
+from .parallel_adk import run_fast_live_specialist_mesh
 from .resilience import certification_recovery_gate, run_recovery_drill
 from .security_engine import apply_least_privilege_patch, certify_after_retest, run_security_gauntlet
 
@@ -25,8 +25,11 @@ WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
 app = FastAPI(
     title="TRUSTFORGE ZERO Live API",
-    version="0.7.0",
-    description="One-click evidence-first autonomous immune mesh with live Google ADK + Gemini orchestration and fail-closed runtime recovery.",
+    version="0.8.0",
+    description=(
+        "One-click evidence-first autonomous immune mesh with bounded live Google ADK + Gemini reasoning, "
+        "provider resilience, deterministic security controls, and fail-closed runtime recovery."
+    ),
 )
 app.add_middleware(
     CORSMiddleware,
@@ -42,7 +45,7 @@ RecoveryMode = Literal["success", "failure", "none"]
 
 class RunRequest(BaseModel):
     target: str = "synthetic_procurement_agent"
-    pace_ms: int = 300
+    pace_ms: int = 180
     recovery_mode: RecoveryMode = "success"
     require_live_adk: bool = True
 
@@ -75,6 +78,18 @@ def _event(
     return item
 
 
+def _cloud_runtime() -> dict:
+    """Non-secret runtime proof. Cloud Run injects K_SERVICE automatically."""
+    service = os.getenv("K_SERVICE")
+    revision = os.getenv("K_REVISION")
+    return {
+        "provider": "google_cloud" if service else "local_or_codespaces",
+        "cloud_run": bool(service),
+        "service": service,
+        "revision": revision,
+    }
+
+
 async def _live_run(
     run_id: str,
     target: str,
@@ -83,7 +98,7 @@ async def _live_run(
     require_live_adk: bool = True,
 ) -> AsyncIterator[str]:
     events: list[TrustforgeEvent] = []
-    delay = max(0, min(pace_ms, 1800)) / 1000
+    delay = max(0, min(pace_ms, 800)) / 1000
 
     async def push(
         event_type: str,
@@ -109,53 +124,55 @@ async def _live_run(
             "sandbox": True,
             "recovery_mode": recovery_mode,
             "require_live_adk": require_live_adk,
+            "cloud_runtime": _cloud_runtime(),
         },
     )
 
-    # One-click production proof: the web run invokes the real Google ADK App
-    # and Gemini before deterministic certification continues. Judges never
-    # need to run a script or type a command to prove model/framework usage.
+    # Competition path: one bounded live Gemini/ADK reasoning call plus real
+    # deterministic specialist execution. Provider quota/outage never freezes
+    # the run; it becomes explicit evidence and closes the certification gate.
     live_adk_verified = False
     adk_evidence: dict = {}
     if require_live_adk:
         try:
-            probe = await run_live_governor_probe(
-                "TRUSTFORGE ZERO certification preflight. Identify yourself as the Governor. "
-                "State which specialist roles are required for trust-boundary discovery, identity, tool integrity, "
-                "defensive adversarial testing, forensics, least-privilege repair, memory provenance, attestation, "
-                "and independent judgment. Confirm that deterministic evidence gates, replay, runtime recovery, "
-                "and human approval remain mandatory. Do not execute any external action. Keep the response concise.",
-                user_id="trustforge-command-center",
-            )
-            adk_evidence = probe.to_dict()
-            live_adk_verified = bool(probe.live_model_called and probe.final_text)
+            mesh = await run_fast_live_specialist_mesh()
+            adk_evidence = mesh.to_dict()
+            live_adk_verified = bool(mesh.live_model_called and mesh.all_required_specialists_verified)
+            provider_status = "VERIFIED" if live_adk_verified else "DEGRADED"
             yield await push(
-                "LIVE_ADK_ORCHESTRATION_VERIFIED",
-                "governor",
+                "LIVE_ADK_MESH_ATTESTED" if live_adk_verified else "LIVE_AI_PROVIDER_DEGRADED",
+                "forensic_agent",
                 "discover",
-                "VERIFIED" if live_adk_verified else "FAILED",
-                "Google ADK executed the TRUSTFORGE Governor against Gemini and returned live orchestration evidence." if live_adk_verified else "Google ADK returned no verifiable live model evidence.",
+                provider_status,
+                (
+                    "Google ADK + Gemini live reasoning completed inside the bounded hybrid specialist mesh."
+                    if live_adk_verified
+                    else "Gemini/ADK live reasoning was unavailable or unverified; deterministic controls continue, but certification remains fail-closed."
+                ),
                 {
-                    "app_name": probe.app_name,
-                    "model": probe.model,
-                    "session_id": probe.session_id,
-                    "authors_seen": probe.authors_seen,
-                    "live_model_called": probe.live_model_called,
-                    "final_text": probe.final_text[:1200],
+                    "model": mesh.model,
+                    "latency_ms": mesh.total_latency_ms,
+                    "model_calls_used": mesh.model_calls_used,
+                    "request_budget_ok": mesh.request_budget_ok,
+                    "live_model_agents": mesh.live_model_agents,
+                    "deterministic_agents": mesh.deterministic_agents,
+                    "authors_seen": mesh.authors_seen,
+                    "live_model_called": mesh.live_model_called,
+                    "all_required_specialists_verified": mesh.all_required_specialists_verified,
+                    "specialists": [s.to_dict() for s in mesh.specialists],
                 },
             )
         except Exception as exc:
             adk_evidence = {"error": f"{type(exc).__name__}: {exc}"}
             yield await push(
-                "LIVE_ADK_ORCHESTRATION_FAILED",
+                "LIVE_AI_PROVIDER_DEGRADED",
                 "governor",
                 "discover",
-                "FAILED",
-                "Live Google ADK + Gemini preflight failed; fail-closed certification remains locked.",
+                "DEGRADED",
+                "Live Google ADK + Gemini evidence could not be obtained; deterministic security execution continues and certification remains locked.",
                 adk_evidence,
             )
     else:
-        live_adk_verified = True
         yield await push(
             "LIVE_ADK_REQUIREMENT_BYPASSED",
             "governor",
@@ -204,13 +221,18 @@ async def _live_run(
         )
 
     failures = [x for x in before if x["result"]["decision"] == "ALLOWED"]
+    forensic_summary = None
+    for specialist in adk_evidence.get("specialists", []):
+        if specialist.get("agent") == "forensic_agent" and specialist.get("verified"):
+            forensic_summary = specialist.get("final_text")
+            break
     yield await push(
         "ROOT_CAUSE_FOUND",
         "forensic_agent",
         "diagnose",
         "CRITICAL" if failures else "CLEAN",
         f"Forensics isolated {len(failures)} baseline control gap(s) across the attack surface.",
-        {"failed_tests": [x["test"] for x in failures]},
+        {"failed_tests": [x["test"] for x in failures], "live_reasoning_summary": forensic_summary},
     )
 
     inject_failure = recovery_mode != "none"
@@ -248,8 +270,15 @@ async def _live_run(
         "provenance_agent",
         "attest",
         "VERIFIED" if chain_before_attestation else "INVALID",
-        "Provenance verified replay comparability, live ADK evidence, runtime recovery evidence, and continuous evidence integrity." if chain_before_attestation else "Provenance rejected the evidence lineage.",
-        {"chain_valid": chain_before_attestation, "events_attested": len(events), "replay_mode": "same_controls_after_patch", "recovery_gate_open": recovery_gate_open, "live_adk_verified": live_adk_verified, "recovery": recovery.to_dict()},
+        "Provenance verified replay comparability, provider evidence state, runtime recovery evidence, and continuous evidence integrity." if chain_before_attestation else "Provenance rejected the evidence lineage.",
+        {
+            "chain_valid": chain_before_attestation,
+            "events_attested": len(events),
+            "replay_mode": "same_controls_after_patch",
+            "recovery_gate_open": recovery_gate_open,
+            "live_adk_verified": live_adk_verified,
+            "recovery": recovery.to_dict(),
+        },
     )
 
     certification = certify_after_retest()
@@ -261,20 +290,65 @@ async def _live_run(
         "judge_agent",
         "certify",
         judge_status,
-        f"Judge verified {passport['tests_passed']}/{passport['tests_total']} controls, live Google ADK/Gemini evidence, provenance, and runtime recovery." if judge_allowed else "Judge blocked certification because live ADK, runtime recovery, or provenance evidence did not satisfy the fail-closed gate.",
-        {**passport, "runtime_recovery_verified": recovery_gate_open, "live_adk_verified": live_adk_verified},
+        (
+            f"Judge verified {passport['tests_passed']}/{passport['tests_total']} controls, live Google ADK/Gemini evidence, provenance, and runtime recovery."
+            if judge_allowed
+            else "Judge blocked the Trust Passport because at least one mandatory live-AI, recovery, or provenance gate is not verified."
+        ),
+        {
+            **passport,
+            "runtime_recovery_verified": recovery_gate_open,
+            "live_adk_verified": live_adk_verified,
+            "provider_evidence": {
+                "model": adk_evidence.get("model"),
+                "latency_ms": adk_evidence.get("total_latency_ms"),
+                "live_agents": adk_evidence.get("live_model_agents", []),
+                "error": adk_evidence.get("error"),
+            },
+        },
     )
 
     chain_before_final = verify_chain(events)
-    final_status = "CERTIFIED" if passport["status"] == "CERTIFIED" and chain_before_final and chain_before_attestation and recovery_gate_open and live_adk_verified else "BLOCKED"
+    final_status = (
+        "CERTIFIED"
+        if passport["status"] == "CERTIFIED"
+        and chain_before_final
+        and chain_before_attestation
+        and recovery_gate_open
+        and live_adk_verified
+        else "BLOCKED"
+    )
     final = _event(
         events,
         "TRUST_PASSPORT_ISSUED" if final_status == "CERTIFIED" else "CERTIFICATION_BLOCKED",
         "governor",
         "certify",
         final_status,
-        "Trust Passport issued from live Google ADK/Gemini orchestration, replayed controls, verified provenance, human safety gates, and proven runtime recovery." if final_status == "CERTIFIED" else "Certification blocked because at least one required live-model, evidence, recovery, provenance, or audit-integrity gate failed.",
-        {"trust_score": passport["trust_score"] if final_status == "CERTIFIED" else 0, "tests_passed": passport["tests_passed"], "tests_total": passport["tests_total"], "audit_chain_valid_before_passport": chain_before_final, "provenance_attested": chain_before_attestation, "runtime_recovery_verified": recovery_gate_open, "live_adk_verified": live_adk_verified, "recovery": recovery.to_dict(), "adk": {"model": adk_evidence.get("model"), "authors_seen": adk_evidence.get("authors_seen"), "live_model_called": adk_evidence.get("live_model_called")}, "coverage": passport.get("coverage", {})},
+        (
+            "Trust Passport issued from bounded live Google ADK/Gemini reasoning, replayed controls, verified provenance, human safety gates, and proven runtime recovery."
+            if final_status == "CERTIFIED"
+            else "Certification blocked: deterministic controls completed, but at least one mandatory live-model, recovery, provenance, or audit-integrity gate failed."
+        ),
+        {
+            "trust_score": passport["trust_score"] if final_status == "CERTIFIED" else 0,
+            "tests_passed": passport["tests_passed"],
+            "tests_total": passport["tests_total"],
+            "audit_chain_valid_before_passport": chain_before_final,
+            "provenance_attested": chain_before_attestation,
+            "runtime_recovery_verified": recovery_gate_open,
+            "live_adk_verified": live_adk_verified,
+            "provider": {
+                "model": adk_evidence.get("model"),
+                "latency_ms": adk_evidence.get("total_latency_ms"),
+                "model_calls_used": adk_evidence.get("model_calls_used"),
+                "request_budget_ok": adk_evidence.get("request_budget_ok"),
+                "live_agents": adk_evidence.get("live_model_agents", []),
+                "error": adk_evidence.get("error"),
+            },
+            "recovery": recovery.to_dict(),
+            "coverage": passport.get("coverage", {}),
+            "cloud_runtime": _cloud_runtime(),
+        },
     )
     if delay:
         await asyncio.sleep(delay)
@@ -283,7 +357,27 @@ async def _live_run(
     chain_valid = verify_chain(events)
     yield _sse(
         "trustforge_complete",
-        {"run_id": run_id, "certificate": final_status if chain_valid else "BLOCKED", "trust_score": passport["trust_score"] if final_status == "CERTIFIED" and chain_valid else 0, "event_count": len(events), "audit_chain_valid": chain_valid, "provenance_attested": chain_before_attestation, "runtime_recovery_verified": recovery_gate_open, "live_adk_verified": live_adk_verified, "adk_model": adk_evidence.get("model"), "adk_authors_seen": adk_evidence.get("authors_seen", []), "terminal_event_hash": events[-1].event_hash, "target": target, "sandbox": True, "tests_passed": passport["tests_passed"], "tests_total": passport["tests_total"], "coverage": passport.get("coverage", {})},
+        {
+            "run_id": run_id,
+            "certificate": final_status if chain_valid else "BLOCKED",
+            "trust_score": passport["trust_score"] if final_status == "CERTIFIED" and chain_valid else 0,
+            "event_count": len(events),
+            "audit_chain_valid": chain_valid,
+            "provenance_attested": chain_before_attestation,
+            "runtime_recovery_verified": recovery_gate_open,
+            "live_adk_verified": live_adk_verified,
+            "adk_model": adk_evidence.get("model"),
+            "adk_latency_ms": adk_evidence.get("total_latency_ms"),
+            "adk_live_agents": adk_evidence.get("live_model_agents", []),
+            "adk_error": adk_evidence.get("error"),
+            "terminal_event_hash": events[-1].event_hash,
+            "target": target,
+            "sandbox": True,
+            "tests_passed": passport["tests_passed"],
+            "tests_total": passport["tests_total"],
+            "coverage": passport.get("coverage", {}),
+            "cloud_runtime": _cloud_runtime(),
+        },
     )
 
 
@@ -294,26 +388,95 @@ def command_center():
 
 @app.get("/api")
 def api_root() -> dict:
-    return {"system": "TRUSTFORGE ZERO", "status": "ONLINE", "mode": "synthetic_defensive_sandbox", "mesh": "10-agent", "vectors": 10, "runtime_recovery": "fail-closed", "live_adk": "required-for-certification", "stream": "/api/v1/gauntlet/stream", "health": "/healthz", "command_center": "/"}
+    return {
+        "system": "TRUSTFORGE ZERO",
+        "status": "ONLINE",
+        "mode": "synthetic_defensive_sandbox",
+        "mesh": "10-agent",
+        "vectors": 10,
+        "runtime_recovery": "fail-closed",
+        "live_adk": "bounded-required-for-certification",
+        "cloud_runtime": _cloud_runtime(),
+        "stream": "/api/v1/gauntlet/stream",
+        "health": "/healthz",
+        "command_center": "/",
+    }
 
 
 @app.get("/healthz")
 def health() -> dict:
-    return {"status": "ok", "system": "TRUSTFORGE ZERO", "mesh": "10-agent", "attack_vectors": 10, "runtime_recovery": "enabled", "live_adk_ready": bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))}
+    return {
+        "status": "ok",
+        "system": "TRUSTFORGE ZERO",
+        "mesh": "10-agent",
+        "attack_vectors": 10,
+        "runtime_recovery": "enabled",
+        "live_adk_configured": bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")),
+        "live_model_timeout_seconds": float(os.getenv("TRUSTFORGE_LIVE_TIMEOUT_SECONDS", "8")),
+        "cloud_runtime": _cloud_runtime(),
+    }
 
 
 @app.get("/api/v1/agents")
 def agents() -> dict:
-    return {"governor": "trustforge_governor", "specialists": ["sentinel_agent", "identity_guard_agent", "tool_guardian_agent", "red_swarm_agent", "forensic_agent", "defense_agent", "memory_guard_agent", "provenance_agent", "judge_agent"], "attack_vectors": 10, "runtime_recovery": {"failure_detection": True, "isolation": True, "checkpoint_resume": True, "reassignment": True, "replay_verification": True, "fail_closed_certification": True}, "live_adk": {"required_for_certification": True, "ready": bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))}, "certification_invariant": "No security claim without executed evidence; no remediation claim without comparable replay; no unprovenanced memory; no tool trust without integrity evidence; no failed runtime recovery may receive a Trust Passport; no certification without live Google ADK/Gemini evidence; no high-risk real-world action without human approval."}
+    return {
+        "governor": "trustforge_governor",
+        "specialists": [
+            "sentinel_agent",
+            "identity_guard_agent",
+            "tool_guardian_agent",
+            "red_swarm_agent",
+            "forensic_agent",
+            "defense_agent",
+            "memory_guard_agent",
+            "provenance_agent",
+            "judge_agent",
+        ],
+        "attack_vectors": 10,
+        "runtime_recovery": {
+            "failure_detection": True,
+            "isolation": True,
+            "checkpoint_resume": True,
+            "reassignment": True,
+            "replay_verification": True,
+            "fail_closed_certification": True,
+        },
+        "live_adk": {
+            "required_for_certification": True,
+            "configured": bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")),
+            "critical_path_model_calls": 1,
+            "hard_timeout_seconds": float(os.getenv("TRUSTFORGE_LIVE_TIMEOUT_SECONDS", "8")),
+        },
+        "cloud_runtime": _cloud_runtime(),
+        "certification_invariant": (
+            "No security claim without executed evidence; no remediation claim without comparable replay; "
+            "no unprovenanced memory; no tool trust without integrity evidence; no failed runtime recovery may receive "
+            "a Trust Passport; no competition certification without verified live Google ADK/Gemini evidence; "
+            "no high-risk real-world action without human approval."
+        ),
+    }
 
 
 @app.get("/api/v1/gauntlet/stream")
-def stream_gauntlet(target: str = "synthetic_procurement_agent", pace_ms: int = 300, recovery_mode: RecoveryMode = "success", require_live_adk: bool = True):
+def stream_gauntlet(
+    target: str = "synthetic_procurement_agent",
+    pace_ms: int = 180,
+    recovery_mode: RecoveryMode = "success",
+    require_live_adk: bool = True,
+):
     run_id = f"tfz-{uuid.uuid4().hex[:12]}"
-    return StreamingResponse(_live_run(run_id, target, pace_ms, recovery_mode, require_live_adk), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "X-TRUSTFORGE-Run-ID": run_id})
+    return StreamingResponse(
+        _live_run(run_id, target, pace_ms, recovery_mode, require_live_adk),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "X-TRUSTFORGE-Run-ID": run_id},
+    )
 
 
 @app.post("/api/v1/gauntlet/stream")
 def stream_gauntlet_post(request: RunRequest):
     run_id = f"tfz-{uuid.uuid4().hex[:12]}"
-    return StreamingResponse(_live_run(run_id, request.target, request.pace_ms, request.recovery_mode, request.require_live_adk), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "X-TRUSTFORGE-Run-ID": run_id})
+    return StreamingResponse(
+        _live_run(run_id, request.target, request.pace_ms, request.recovery_mode, request.require_live_adk),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "X-TRUSTFORGE-Run-ID": run_id},
+    )
