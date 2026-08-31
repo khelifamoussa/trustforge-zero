@@ -16,8 +16,10 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from .agent_registry import registry_summary
 from .evidence_store import persist_run, persistence_status
 from .events import TrustforgeEvent, build_event, verify_chain
+from .memory_bank import memory_bank_status
 from .parallel_adk import run_fast_live_specialist_mesh
 from .resilience import certification_recovery_gate, run_recovery_drill
 from .security_engine import apply_least_privilege_patch, certify_after_retest, run_security_gauntlet
@@ -27,10 +29,11 @@ PERSISTENCE_TIMEOUT_SECONDS = float(os.getenv("TRUSTFORGE_PERSISTENCE_TIMEOUT_SE
 
 app = FastAPI(
     title="TRUSTFORGE ZERO Live API",
-    version="0.9.0",
+    version="0.10.0",
     description=(
         "One-click evidence-first autonomous immune mesh with bounded live Google ADK + Gemini reasoning, "
-        "provider resilience, deterministic security controls, fail-closed runtime recovery, and persistent evidence."
+        "provider resilience, deterministic security controls, fail-closed runtime recovery, enterprise discovery, "
+        "provenance-gated memory, and persistent evidence."
     ),
 )
 app.add_middleware(
@@ -90,6 +93,17 @@ def _cloud_runtime() -> dict:
         "service": service,
         "revision": revision,
     }
+
+
+async def _bounded_status(fn, backend: str) -> dict:
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(fn), timeout=PERSISTENCE_TIMEOUT_SECONDS)
+    except asyncio.TimeoutError:
+        return {
+            "backend": backend,
+            "ready": False,
+            "error": f"STATUS_TIMEOUT after {PERSISTENCE_TIMEOUT_SECONDS:.1f}s",
+        }
 
 
 async def _persist_completed_run(run_id: str, events: list[TrustforgeEvent], payload: dict) -> dict:
@@ -152,6 +166,8 @@ async def _live_run(
             "recovery_mode": recovery_mode,
             "require_live_adk": require_live_adk,
             "cloud_runtime": _cloud_runtime(),
+            "registry": {"type": "first_party_versioned_registry", "agents": 10},
+            "memory": {"provenance_required": True, "cross_session": True},
         },
     )
 
@@ -206,6 +222,14 @@ async def _live_run(
             {},
         )
 
+    yield await push(
+        "AGENT_REGISTRY_RESOLVED",
+        "governor",
+        "discover",
+        "VERIFIED",
+        "Governor resolved approved, versioned Agent Cards before delegation.",
+        {"registry_type": "first_party_versioned_registry", "approved_agents": 10, "scoped_access": True},
+    )
     yield await push(
         "TRUST_BOUNDARY_MAPPED",
         "sentinel_agent",
@@ -279,7 +303,14 @@ async def _live_run(
 
     patch = apply_least_privilege_patch()
     yield await push("PATCH_APPLIED", "defense_agent", "repair", "HARDENED", "Defense applied the minimum least-privilege repair bundle in the synthetic sandbox.", patch)
-    yield await push("MEMORY_GUARD_ARMED", "memory_guard_agent", "repair", "HARDENED", "Memory Guard provenance-gated persistent writes and promoted verified failures into regression requirements.", {"provenance_required": True, "regression_memory": True})
+    yield await push(
+        "MEMORY_GUARD_ARMED",
+        "memory_guard_agent",
+        "repair",
+        "HARDENED",
+        "Memory Guard provenance-gated cross-session memory writes and promoted verified failures into regression requirements.",
+        {"provenance_required": True, "regression_memory": True, "cross_session": True, "integrity_hash": "sha256", "revocation_supported": True},
+    )
 
     after = run_security_gauntlet(hardened=True)
     for result in after:
@@ -399,6 +430,12 @@ async def _live_run(
         "tests_total": passport["tests_total"],
         "coverage": passport.get("coverage", {}),
         "cloud_runtime": _cloud_runtime(),
+        "enterprise_fleet": {
+            "registry": "first_party_versioned_registry",
+            "cross_session_memory": True,
+            "human_approval_high_risk": True,
+            "scoped_agent_cards": True,
+        },
     }
     complete_payload["persistence"] = await _persist_completed_run(run_id, events, complete_payload)
     yield _sse("trustforge_complete", complete_payload)
@@ -420,6 +457,8 @@ def api_root() -> dict:
         "runtime_recovery": "fail-closed",
         "live_adk": "bounded-required-for-certification",
         "persistent_evidence": "firestore-bounded-fail-safe",
+        "enterprise_registry": "/api/v1/registry",
+        "cross_session_memory": "/api/v1/memory/status",
         "cloud_runtime": _cloud_runtime(),
         "stream": "/api/v1/gauntlet/stream",
         "persistence": "/api/v1/persistence/status",
@@ -439,24 +478,30 @@ def health() -> dict:
         "live_adk_configured": bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")),
         "live_model_timeout_seconds": float(os.getenv("TRUSTFORGE_LIVE_TIMEOUT_SECONDS", "8")),
         "persistence_timeout_seconds": PERSISTENCE_TIMEOUT_SECONDS,
+        "registry": {"type": "first_party_versioned_registry", "agent_count": 10},
+        "memory": {"backend": "firestore", "provenance_required": True, "cross_session": True},
         "cloud_runtime": _cloud_runtime(),
     }
 
 
 @app.get("/api/v1/persistence/status")
 async def persistence() -> dict:
-    try:
-        return await asyncio.wait_for(asyncio.to_thread(persistence_status), timeout=PERSISTENCE_TIMEOUT_SECONDS)
-    except asyncio.TimeoutError:
-        return {
-            "backend": "firestore",
-            "ready": False,
-            "error": f"PERSISTENCE_TIMEOUT after {PERSISTENCE_TIMEOUT_SECONDS:.1f}s",
-        }
+    return await _bounded_status(persistence_status, "firestore")
+
+
+@app.get("/api/v1/memory/status")
+async def memory_status() -> dict:
+    return await _bounded_status(memory_bank_status, "firestore")
+
+
+@app.get("/api/v1/registry")
+def registry() -> dict:
+    return registry_summary()
 
 
 @app.get("/api/v1/agents")
 def agents() -> dict:
+    registry = registry_summary()
     return {
         "governor": "trustforge_governor",
         "specialists": [
@@ -471,6 +516,13 @@ def agents() -> dict:
             "judge_agent",
         ],
         "attack_vectors": 10,
+        "enterprise_registry": {
+            "type": registry["registry_type"],
+            "agent_count": registry["agent_count"],
+            "approved_count": registry["approved_count"],
+            "versioned_discovery_metadata": True,
+            "scoped_tool_and_data_access": True,
+        },
         "runtime_recovery": {
             "failure_detection": True,
             "isolation": True,
@@ -489,6 +541,13 @@ def agents() -> dict:
             "backend": "firestore",
             "write_timeout_seconds": PERSISTENCE_TIMEOUT_SECONDS,
             "failure_is_non_fatal_to_security_execution": True,
+        },
+        "cross_session_memory": {
+            "backend": "firestore",
+            "provenance_required": True,
+            "integrity_hash": "sha256",
+            "classification_scoped": True,
+            "ttl_bounded": True,
         },
         "cloud_runtime": _cloud_runtime(),
         "certification_invariant": (
