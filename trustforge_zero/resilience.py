@@ -96,13 +96,23 @@ def run_recovery_drill(
 
 
 def certification_recovery_gate(report: RecoveryReport) -> bool:
-    """Return True only when runtime recovery evidence is certification-safe."""
+    """Return True only when runtime/recovery evidence is certification-safe.
 
-    return bool(
+    A healthy run with no injected failure does not need failure detection or
+    isolation. A run that actually encountered a failure must prove detection,
+    isolation, resume, and replay before certification can proceed.
+    """
+
+    base_safe = bool(
         report.recovery_succeeded
         and report.certification_gate == "OPEN"
-        and report.detected
-        and report.isolated
         and report.resumed
         and report.replay_verified
     )
+    if not base_safe:
+        return False
+
+    if report.failure_mode == "none":
+        return True
+
+    return bool(report.detected and report.isolated)
