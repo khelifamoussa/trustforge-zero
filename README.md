@@ -10,35 +10,19 @@ Enterprise agents can act with tools, credentials, memory, and delegated authori
 
 ## Proof-of-action lifecycle
 
-`DISCOVER -> ATTACK -> OBSERVE -> DIAGNOSE -> REPAIR -> RE-ATTACK -> ATTEST -> CERTIFY`
+`DISCOVER -> ATTACK -> OBSERVE -> DIAGNOSE -> RECOVER -> REPAIR -> RE-ATTACK -> ATTEST -> CERTIFY`
 
-A certification run is not a scripted success animation. The backend executes evidence-producing controls and creates a SHA-256 hash-chained event trail. A positive Trust Passport requires:
+A certification run is not a scripted success animation. The backend executes evidence-producing controls and creates a SHA-256 hash-chained event trail. A positive Trust Passport requires live Google ADK + Gemini evidence on the critical reasoning path, all 10 hardened controls to pass on replay, high-risk actions to remain human-approval gated, verified evidence continuity, and certification-safe runtime recovery. If a mandatory live-model, provenance, recovery, or integrity gate fails, certification is **BLOCKED**.
 
-- live Google ADK + Gemini evidence on the critical reasoning path;
-- all 10 hardened security controls to pass on replay;
-- high-risk actions to remain human-approval gated;
-- verified evidence-chain continuity and provenance;
-- successful fail-closed recovery/replay verification.
+## Agent fleet and enterprise discovery
 
-If a mandatory live-model, provenance, recovery, or integrity gate fails, certification is **BLOCKED**.
+The Google ADK root agent is `trustforge_governor`. It delegates to nine specialists with intentionally separated responsibilities: Sentinel, Identity Guard, Tool Guardian, Red Swarm, Forensic, Defense, Memory Guard, Provenance, and Judge.
 
-## Agent fleet
+`trustforge_zero/agent_registry.py` provides a **first-party versioned Agent Card registry**. Each approved agent has an owner, purpose, department scope, tool scope, data scope, risk tier, and mandatory human approval for high-risk actions. This is deliberately described as a project-level registry; it is **not** presented as Google Agent Registry.
 
-The Google ADK root agent is `trustforge_governor`. It delegates to nine specialists with intentionally separated responsibilities:
+## Cross-session regression memory
 
-| Specialist | Responsibility |
-|---|---|
-| Sentinel | trust-boundary and policy-drift discovery |
-| Identity Guard | workload identity, authorization, least privilege |
-| Tool Guardian | tool/MCP schema, manifest, provenance and scope integrity |
-| Red Swarm | defensive synthetic adversarial testing |
-| Forensic | evidence-first root-cause analysis |
-| Defense | minimum deterministic sandbox repair |
-| Memory Guard | memory provenance and regression immunity |
-| Provenance | independent evidence-chain attestation |
-| Judge | final evidence-based Trust Passport decision |
-
-`trustforge_zero/agent_registry.py` provides versioned first-party Agent Cards for discovery, ownership, tool/data scopes, risk tier, and approval policy. This is a project-level registry; it is **not** presented as Google Agent Registry.
+`trustforge_zero/memory_bank.py` adds a Firestore-backed first-party memory bank for long-running fleet security. Memory writes require source run ID and source event hash, carry data classification and TTL, and are SHA-256 integrity-attested. The Memory Guard can promote verified historical failures into regression requirements without trusting unprovenanced context. This is a project capability and is **not** presented as Google's managed Memory Bank product.
 
 ## Ten-vector defensive gauntlet
 
@@ -61,7 +45,7 @@ The tests are synthetic, non-destructive, and defensive. Coverage metadata maps 
 
 - **Gemini 3.5+** for bounded live reasoning on the certification critical path.
 - **Google Agent Development Kit (ADK) 2.x** for the Governor and multi-agent specialist architecture.
-- **Google Cloud Firestore** for persistent run/evidence storage when Google Cloud credentials are available.
+- **Google Cloud Firestore** for persistent run/evidence and provenance-gated memory storage when Google Cloud credentials are available.
 - The FastAPI service is designed for **Cloud Run** and exposes runtime metadata (`K_SERVICE`, `K_REVISION`) as deployment evidence when actually running there.
 
 The application never claims Cloud Run or Firestore success from configuration alone. Cloud/runtime and persistence evidence must be observed at runtime.
@@ -70,8 +54,9 @@ The application never claims Cloud Run or Firestore success from configuration a
 
 ```mermaid
 flowchart LR
-    U[Judge / Operator] -->|Initiate Gauntlet| API[FastAPI Command Center]
+    U[Judge / Operator] -->|Initiate Gauntlet| API[Command Center + FastAPI]
     API --> GOV[Google ADK Governor]
+    REG[(Versioned Agent Registry)] --> GOV
     GOV --> S[Sentinel]
     GOV --> I[Identity Guard]
     GOV --> T[Tool Guardian]
@@ -81,25 +66,29 @@ flowchart LR
     GOV --> M[Memory Guard]
     GOV --> P[Provenance]
     GOV --> J[Judge]
+    GOV --> GEM[Gemini 3.5+]
     R --> G[10-vector synthetic gauntlet]
-    G --> E[Hash-chained evidence]
+    G --> E[SHA-256 hash-chained evidence]
     F --> E
     D --> RE[Exact-control replay]
     RE --> E
     E --> P
     P --> J
+    M --> MB[(Provenance-gated memory)]
+    MB --> FS[(Firestore)]
+    E -. bounded persistence .-> FS
     J -->|all gates proven| PASS[Trust Passport]
     J -->|any gate fails| BLOCK[Certification Blocked]
-    E -. bounded persistence .-> FS[(Firestore)]
     API -. deployment target .-> CR[Cloud Run]
-    GOV --> GEM[Gemini 3.5+]
 ```
 
 ## Reliability and operational discipline
 
-- **Bounded model budget:** the fast path uses one critical-path live Gemini/ADK reasoning call; deterministic specialists continue executing controls without multiplying model quota.
+- **Bounded model budget:** one critical-path live Gemini/ADK reasoning call; deterministic controls continue without multiplying model quota.
 - **Provider degradation:** if Gemini is unavailable, deterministic controls still execute, but the competition-grade Trust Passport fails closed.
-- **Runtime recovery:** synthetic failure detection, isolation, checkpoint, reassignment, resume, and replay verification are explicit certification gates.
+- **Runtime recovery:** failure detection, isolation, checkpoint, reassignment, resume, and replay verification are explicit certification gates. A healthy no-failure run is also correctly certification-safe.
+- **Enterprise discovery:** versioned Agent Cards make delegation ownership and scope judge-verifiable.
+- **Cross-session memory:** provenance, classification, TTL, integrity hash, and revocation metadata constrain memory reuse.
 - **Persistent evidence:** Firestore writes are bounded by timeout and cannot stall security execution.
 - **Human-in-the-loop:** high-risk real-world actions are never auto-approved.
 - **Immutable audit evidence:** events are SHA-256 hash chained and independently re-verifiable.
@@ -128,28 +117,33 @@ export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
 ## Judge-verifiable endpoints
 
 - `/` — one-click Command Center
-- `/healthz` — health, live-model configuration, runtime metadata
+- `/healthz` — health, live-model configuration, registry/memory posture, runtime metadata
 - `/api/v1/agents` — specialist fleet, reliability gates, and stack evidence
 - `/api/v1/registry` — versioned enterprise Agent Cards and scoped capabilities
+- `/api/v1/memory/status` — provenance-gated cross-session memory posture
 - `/api/v1/persistence/status` — Firestore readiness evidence
 - `/api/v1/gauntlet/stream` — live Server-Sent Events proof-of-action stream
 
 ## Four-minute demo path
 
-1. Show the public Command Center and Google Cloud deployment proof.
-2. Open `/api/v1/agents` or the in-product evidence panel to prove the ADK fleet and live-model gate.
+1. Show the public Command Center and actual Google Cloud deployment proof.
+2. Briefly show `/api/v1/registry` and `/api/v1/agents` to prove separation of concerns and scoped enterprise discovery.
 3. Click **INITIATE GAUNTLET** once.
-4. Show a baseline attack succeed, evidence-driven diagnosis, least-privilege repair, and the exact attack replay becoming blocked.
+4. Show a baseline attack succeed, evidence-driven diagnosis, recovery, least-privilege repair, and the exact attack replay becoming blocked.
 5. Show human approval remaining required for the high-risk action.
-6. Show verified provenance/hash chain and the final Trust Passport.
-7. Show Firestore persistence evidence and Cloud Run service/revision evidence if those services are active in the submitted deployment.
+6. Show Memory Guard provenance, verified hash chain, and final Trust Passport.
+7. Show Firestore persistence and Cloud Run service/revision evidence only if the submitted deployment proves those services are active.
 
 ## Hackathon judging alignment
 
-- **Innovation & Operational Utility:** autonomous attack -> diagnosis -> repair -> replay -> certification instead of passive chat or static scanning.
-- **Architectural Discipline:** Google ADK separation of concerns, bounded model calls, scoped Agent Cards, immutable state/evidence, Firestore persistence, recovery gates, credential isolation, and fail-closed behavior.
+- **Innovation & Operational Utility:** autonomous attack -> diagnosis -> recovery -> repair -> replay -> certification instead of passive chat or static scanning.
+- **Architectural Discipline:** Google ADK separation of concerns, bounded model calls, scoped Agent Cards, immutable evidence, provenance-gated cross-session state, Firestore persistence, recovery gates, credential isolation, and fail-closed behavior.
 - **Demo & Production Readiness:** one-click live SSE run, reproducible setup, architecture diagram, runtime evidence endpoints, explicit degraded states, and no fabricated cloud-success claims.
 - **Fortified Enterprise Fleet:** multi-agent delegation, enterprise discovery metadata, identity/tool/memory governance, observability evidence, safe synthetic enterprise data, human gates, and continuous regression-oriented security posture.
+
+## Deployment note
+
+Google AI Studio is useful for a judge-facing web deployment path, but the repository's authoritative backend is Python/Google ADK. Any AI Studio adaptation must preserve the real security lifecycle and must not silently replace the ADK evidence path with a visual mock. The final submission should show the actual deployed Google Cloud runtime evidence available from that deployment.
 
 ## Safety and disclosure
 
@@ -163,7 +157,8 @@ TRUSTFORGE ZERO attacks only its synthetic defensive sandbox in this demo. It do
 - `trustforge_zero/security_engine.py` — deterministic gauntlet, repair, replay, Trust Passport
 - `trustforge_zero/resilience.py` — recovery drill and fail-closed gate
 - `trustforge_zero/events.py` — immutable hash-chained evidence
-- `trustforge_zero/evidence_store.py` — bounded Firestore persistence
+- `trustforge_zero/evidence_store.py` — bounded Firestore evidence persistence
+- `trustforge_zero/memory_bank.py` — provenance-gated cross-session Firestore memory
 - `trustforge_zero/api.py` — live API and SSE orchestration
 - `web/` — judge-facing one-click Command Center
-- `tests/` — deterministic security/recovery tests
+- `tests/` — deterministic security, registry, memory, and recovery tests
