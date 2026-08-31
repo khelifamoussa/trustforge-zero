@@ -23,5 +23,9 @@ def test_failed_recovery_closes_certification_gate():
 
 def test_no_failure_path_remains_certification_safe():
     report = run_recovery_drill(inject_failure=False)
+    assert report.failure_mode == "none"
     assert report.recovery_succeeded is True
     assert report.certification_gate == "OPEN"
+    assert report.resumed is True
+    assert report.replay_verified is True
+    assert certification_recovery_gate(report) is True
